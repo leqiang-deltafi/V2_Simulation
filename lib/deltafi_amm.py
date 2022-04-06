@@ -168,3 +168,4 @@ class DeltafiAMM(AMM):
     
     # print("get_tvl_ratio_to_initial_state", str(current_tvl), str(initial_tvl))
     return current_tvl / initial_tvl
+    
