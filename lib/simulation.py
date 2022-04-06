@@ -45,9 +45,6 @@ def run_simulation(num_retail_traders, num_arb_traders, trade_prob, oracle: Orac
 
         for i in range(len(amm_list)):
             amm_name = amm_list[i].get_name()
-            print(len(steps))
-            print(len(tvl_ratio_change_list[0]))
-            print(len(tvl_ratio_change_list[1]))
             plt.plot(steps, tvl_ratio_change_list[i], label=amm_name)
 
             max_y_plot = max(max_y_plot, max(tvl_ratio_change_list[i]))
