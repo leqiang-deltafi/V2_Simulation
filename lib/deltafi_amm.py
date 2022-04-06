@@ -75,7 +75,7 @@ class DeltafiAMM(AMM):
       return token_A_output * (1 - self.fee_rate)
     
     if sell_B_to_target > 0:
-      buy_A_to_target = sell_B_beyond_target * price_B_selling_B
+      buy_A_to_target = sell_B_to_target * price_B_selling_B
       exp = price_B_selling_B * self.target_reserve_B / self.target_reserve_A
       buy_A_beyond_target = (self.balance_A - buy_A_to_target) * (1 - ((self.balance_B + sell_B_to_target) / (token_B_input + self.balance_B))**exp)
 
