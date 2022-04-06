@@ -1,9 +1,9 @@
-from prototypes import AMM
+from .prototypes import AMM
 
 # class that implement uniswap for comparison
 # TODO: add deposit and withdraw after discussion
 class UniswapAMM(AMM):
-  def __init__(self, initial_reserve_A, initial_reserve_B, fee_rate, oracle):
+  def __init__(self, initial_reserve_A, initial_reserve_B, oracle, fee_rate=0):
     self.initial_reserve_A = initial_reserve_A
     self.initial_reserve_B = initial_reserve_B
     self.oracle = oracle
@@ -14,6 +14,9 @@ class UniswapAMM(AMM):
     self.balance_B = initial_reserve_B
     self.K = initial_reserve_A * initial_reserve_B
     self.fee_rate = fee_rate
+
+  def get_name(self):
+    return "Uniswap"
 
   def get_balance_A(self):
     return self.balance_A
@@ -38,17 +41,17 @@ class UniswapAMM(AMM):
     return token_B_output*(1 - self.fee_rate)
 
   def swap_A_for_B(self, token_A_input):
-    implied_price = self.get_implied_price()
+    implied_price = self.get_implied_price_A_for_B()
 
     token_B_output = self.get_swap_out_B(token_A_input)
     self.balance_A += token_A_input
     self.balance_B -= token_B_output
 
-    actual_price = token_A_input / token_B_output
+    actual_price = token_B_output / token_A_input
     return token_A_input, abs(implied_price - actual_price) / implied_price
 
   def swap_B_for_A(self, token_B_input):
-    implied_price = self.get_implied_price()
+    implied_price = self.get_implied_price_B_for_A()
 
     token_A_output = self.get_swap_out_A(token_B_input)
     self.balance_A -= token_A_output

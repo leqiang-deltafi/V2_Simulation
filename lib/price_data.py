@@ -53,7 +53,3 @@ def get_binance_price_data_history(step_len):
 
     return price_history
 
-
-
-get_binance_price_data_history(1000)
-

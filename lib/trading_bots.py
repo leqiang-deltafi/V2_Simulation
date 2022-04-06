@@ -1,19 +1,18 @@
-from secrets import randbits
-from prototypes import TradingBot, AMM
-from price_data import Oracle
+from .prototypes import TradingBot, AMM
+from .price_data import Oracle
 import random
 
 # class that simulates regular traders (robinhood traders)
 class RetailAgent(TradingBot):
     def __init__(self, oracle: Oracle) -> None:
         self.oracle = oracle
-        self.max_sell_A_amount = 2000 * random()
+        self.max_sell_A_amount = 2000
         self.max_sell_B_amount = self.max_sell_A_amount / oracle.get_price()
-        self.accepted_price_range = 0.1 * random()
+        self.accepted_price_range = 0.1 * random.random()
 
     def maybe_sell_A_for_B(self, amm: AMM):
         price_A_selling_A = 1 / self.oracle.get_price()
-        sell_A_amount = self.max_sell_A_amount * random.random()
+        sell_A_amount = self.max_sell_A_amount * random.random() * random.random()
         accepted_min_B_amount = sell_A_amount * price_A_selling_A * (1 - self.accepted_price_range * random.random())
         amm_buy_B_amount = amm.get_swap_out_B(sell_A_amount)
 
@@ -30,6 +29,7 @@ class RetailAgent(TradingBot):
             amm.swap_B_for_A(sell_B_amount)
     
     def maybe_execute_trade(self, amm: AMM):
+        self.max_sell_B_amount = self.max_sell_A_amount / self.oracle.get_price()
         if random.random() < 0.5:
             self.maybe_sell_A_for_B(amm)
         else:
@@ -45,26 +45,26 @@ class ArbAgent(TradingBot):
 
     # buy B for less A at our AMM, then sell B for more A in other places
     # the arbitraguer gets net gain on A
-    def arbitrage_A(self, implied_price_A_sell_A, target_price_B_sell_B, amm: AMM):
+    def arbitrage_A(self, target_price_B_sell_B, amm: AMM):
         sell_A_amount = amm.get_balance_A() * 0.1
         buy_B_amount = amm.get_swap_out_B(sell_A_amount)
 
         while sell_A_amount > 0.000001 and (buy_B_amount / sell_A_amount) * target_price_B_sell_B <= 1:
             sell_A_amount /= 2
-            buy_B_amount = amm.get_balance_B(sell_A_amount)
+            buy_B_amount = amm.get_swap_out_B(sell_A_amount)
 
         if (buy_B_amount / sell_A_amount) * target_price_B_sell_B > 1:
             amm.swap_A_for_B(sell_A_amount)
     
     # buy A for less B at our AMM, then sell A for more B in other places
     # the arbitraguer gets net gain on B
-    def arbitrage_B(self, implied_price_B_sell_B, target_price_A_sell_A, amm: AMM):
+    def arbitrage_B(self, target_price_A_sell_A, amm: AMM):
         sell_B_amount = amm.get_balance_B() * 0.1
         buy_A_amount = amm.get_swap_out_A(sell_B_amount)
 
         while sell_B_amount > 0.000000001 and (buy_A_amount / sell_B_amount) * target_price_A_sell_A <= 1:
             sell_B_amount /= 2
-            buy_A_amount = amm.get_balance_A(sell_B_amount)
+            buy_A_amount = amm.get_swap_out_A(sell_B_amount)
 
         if (buy_A_amount / sell_B_amount) * target_price_A_sell_A > 1:
             amm.swap_B_for_A(sell_B_amount)
@@ -77,8 +77,8 @@ class ArbAgent(TradingBot):
         implied_price_A_sell_A = amm.get_implied_price_A_for_B()
 
         if implied_price_A_sell_A * target_price_B_sell_B > 1:
-            self.arbitrage_A(implied_price_A_sell_A, target_price_B_sell_B, amm)
+            self.arbitrage_A(target_price_B_sell_B, amm)
         
         if implied_price_B_sell_B * target_price_A_sell_A > 1:
-            self.arbitrage_B(implied_price_B_sell_B, target_price_A_sell_A, amm)
+            self.arbitrage_B(target_price_A_sell_A, amm)
 

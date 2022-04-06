@@ -4,9 +4,12 @@ from abc import abstractclassmethod
 # virtual class for all amm types
 class AMM():
     @abstractclassmethod
-    def get_balance_A():
+    def get_name(self):
         pass
-    def get_balance_B():
+    @abstractclassmethod
+    def get_balance_A(self):
+        pass
+    def get_balance_B(self):
         pass
     # implied price: how much B we can get from spending 1 A
     @abstractclassmethod
