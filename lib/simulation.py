@@ -11,7 +11,10 @@ from .prototypes import AMM
 from .trading_bots import RetailAgent, ArbAgent
 import random
 
-def run_simulation(num_retail_traders, num_arb_traders, trade_prob, oracle: Oracle, amm_list: list[AMM], plt=None, max_steps=None):
+def run_simulation(
+    num_retail_traders, num_arb_traders, trade_prob, 
+    oracle: Oracle, amm_list: list[AMM], 
+    plt=None, max_steps=None, title=""):
     
     if max_steps is None:
         max_steps = oracle.max_index
@@ -53,8 +56,8 @@ def run_simulation(num_retail_traders, num_arb_traders, trade_prob, oracle: Orac
         plt.legend()
         plt.title("num_retail_traders=" + str(num_retail_traders) + "\nnum_arb_traders=" + str(num_arb_traders))
         plt.xlabel("step")
-        plt.ylabel("pool tvl compare to the initial state")
-        plt.ylim(min_y_plot*0.95, max_y_plot*1.05)
+        plt.ylabel("pool tvl compare to the initial state " + title)
+        plt.ylim(min_y_plot, max_y_plot*1.05)
         # plt.gca().set_ylim()
         plt.grid()
         plt.show()

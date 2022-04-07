@@ -33,6 +33,11 @@ class AMM():
     @abstractclassmethod
     def get_tvl_ratio_to_initial_state(self):
         raise NotImplementedError
+    @abstractclassmethod
+    def lp_deposit(self, token_B_amount):
+        raise NotImplementedError
+    # @abstractclassmethod
+    # def lp_withdraw(self, sh)
 
 class TradingBot():
     @abstractclassmethod

@@ -16,7 +16,10 @@ class UniswapAMM(AMM):
     self.fee_rate = fee_rate
 
   def get_name(self):
-    return "Uniswap"
+    name = "Uniswap"
+    if self.fee_rate > 0:
+      name += ",fee rate=" + str(self.fee_rate*100) + "%"
+    return name
 
   def get_balance_A(self):
     return self.balance_A

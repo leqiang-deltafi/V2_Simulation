@@ -6,7 +6,7 @@ from .price_data import Oracle
 class DeltafiAMM(AMM):
   def __init__(
     self, initial_reserve_A, initial_reserve_B, oracle: Oracle, fee_rate=0, 
-    enable_external_exchange=False, enable_price_adjustment=False):
+    enable_external_exchange=False, enable_price_adjustment=False, enable_conf_interval=False):
     
     # target reserve for calculating the A to B ratio only
     # it will be updated upon deposit and withdrawal
@@ -21,14 +21,24 @@ class DeltafiAMM(AMM):
     self.oracle = oracle
     self.fee_rate = fee_rate
 
+    assert(not (enable_external_exchange and enable_price_adjustment))
     self.enable_external_exchange = enable_external_exchange
     self.enable_price_adjustment = enable_price_adjustment
-  
+    self.enable_conf_interval = enable_conf_interval
+
   def get_name(self):
-    base_name = "deltafi V2"
-    if self.do_external_exchange is True:
-      return base_name + " with external exchange"
-    return base_name
+    name = "deltafi V2"
+    if self.enable_external_exchange is True:
+      name += " + external exchange"
+    if self.enable_price_adjustment is True:
+      name += " + price adjustment"
+    if self.enable_conf_interval is True:
+      name += " + confidence interval"
+
+    if self.fee_rate > 0:
+      name += ",fee rate=" + str(self.fee_rate*100) + "%"
+
+    return name
 
   def get_balance_A(self):
     return self.balance_A
@@ -36,9 +46,14 @@ class DeltafiAMM(AMM):
   def get_balance_B(self):
     return self.balance_B
 
+  def get_conf_interval(self):
+    if self.enable_conf_interval is True:
+      return self.oracle.get_conf_interval()
+    return 0
+
   # implied price for how much A we can buy when selling 1 B
   def get_implied_price_B_for_A(self):
-    price_B_selling_B = self.oracle.get_price() - self.oracle.get_conf_interval()
+    price_B_selling_B = self.oracle.get_price() - self.get_conf_interval()
     price_modifier = self.target_reserve_B / self.target_reserve_A * self.balance_A / self.balance_B
 
     if self.enable_price_adjustment and price_modifier > 1:
@@ -49,7 +64,7 @@ class DeltafiAMM(AMM):
 
   # implied price for how much B we can buy when selling 1 A
   def get_implied_price_A_for_B(self):
-    price_A_selling_A = 1 / (self.oracle.get_price() + self.oracle.get_conf_interval())
+    price_A_selling_A = 1 / (self.oracle.get_price() + self.get_conf_interval())
     price_modifier = self.target_reserve_A / self.target_reserve_B * self.balance_B / self.balance_A
 
     if self.enable_price_adjustment and price_modifier > 1:
@@ -59,7 +74,7 @@ class DeltafiAMM(AMM):
     return result*(1 - self.fee_rate)
 
   def _get_swap_out_A_adjusted(self, token_B_input):
-    price_B_selling_B = self.oracle.get_price() - self.oracle.get_conf_interval()
+    price_B_selling_B = self.oracle.get_price() - self.get_conf_interval()
 
     current_value_in_A = self.balance_A + self.balance_B * price_B_selling_B
     initial_value_in_A = self.target_reserve_A + self.target_reserve_B * price_B_selling_B
@@ -72,6 +87,7 @@ class DeltafiAMM(AMM):
     if token_B_input < sell_B_to_target:
       token_A_output = token_B_input * price_B_selling_B
       assert(self.balance_A - token_A_output >= target_A)
+      # print("_get_swap_out_A_adjusted_0", token_B_input, token_A_output, self._get_swap_out_A_regular(token_B_input))
       return token_A_output * (1 - self.fee_rate)
     
     if sell_B_to_target > 0:
@@ -79,12 +95,13 @@ class DeltafiAMM(AMM):
       exp = price_B_selling_B * self.target_reserve_B / self.target_reserve_A
       buy_A_beyond_target = (self.balance_A - buy_A_to_target) * (1 - ((self.balance_B + sell_B_to_target) / (token_B_input + self.balance_B))**exp)
 
+      # print("_get_swap_out_A_adjusted_1", token_B_input, buy_A_to_target + buy_A_beyond_target, self._get_swap_out_A_regular(token_B_input))
       return (buy_A_to_target + buy_A_beyond_target) * (1 - self.fee_rate)
     
     return self._get_swap_out_A_regular(token_B_input)
 
   def _get_swap_out_A_regular(self, token_B_input):
-    price_B_selling_B = self.oracle.get_price() - self.oracle.get_conf_interval()
+    price_B_selling_B = self.oracle.get_price() - self.get_conf_interval()
     exp = price_B_selling_B * self.target_reserve_B / self.target_reserve_A
     result = self.balance_A * (1 - (self.balance_B / (token_B_input + self.balance_B))**exp)
 
@@ -96,9 +113,9 @@ class DeltafiAMM(AMM):
     return self._get_swap_out_A_regular(token_B_input)
 
   def _get_swap_out_B_adjusted(self, token_A_input):
-    price_A_selling_A = 1 / (self.oracle.get_price() + self.oracle.get_conf_interval())
+    price_A_selling_A = 1 / (self.oracle.get_price() + self.get_conf_interval())
     current_value_in_B = self.balance_A * price_A_selling_A + self.balance_B
-    initial_value_in_B = self.target_reserve_A * price_A_selling_A + self.balance_B
+    initial_value_in_B = self.target_reserve_A * price_A_selling_A + self.target_reserve_B
 
     target_A = self.target_reserve_A * (current_value_in_B / initial_value_in_B)
     target_B = self.target_reserve_B * (current_value_in_B / initial_value_in_B)
@@ -108,6 +125,8 @@ class DeltafiAMM(AMM):
     if token_A_input < sell_A_to_target:
       token_B_output = token_A_input * price_A_selling_A
       assert(self.balance_B - token_B_output >= target_B)
+
+      # print("_get_swap_out_B_adjusted_0", token_A_input, token_B_output, self._get_swap_out_B_regular(token_A_input))
       return token_B_output*(1 - self.fee_rate)
     
     if sell_A_to_target > 0:
@@ -115,13 +134,14 @@ class DeltafiAMM(AMM):
       exp = price_A_selling_A * self.target_reserve_A / self.target_reserve_B
       buy_B_beyond_target = (self.balance_B - buy_B_to_target) * (1 - ((self.balance_A + sell_A_to_target) / (token_A_input + self.balance_A))**exp)
 
+      # print("_get_swap_out_B_adjusted_1", token_A_input, buy_B_to_target + buy_B_beyond_target, self._get_swap_out_B_regular(token_A_input))
       return (buy_B_to_target + buy_B_beyond_target) * (1 - self.fee_rate)
 
     return self._get_swap_out_B_regular(token_A_input)
 
   # how much B we can actually get if we sell token_A_input amount of A
   def _get_swap_out_B_regular(self, token_A_input):
-    price_A_selling_A = 1 / (self.oracle.get_price() + self.oracle.get_conf_interval())
+    price_A_selling_A = 1 / (self.oracle.get_price() + self.get_conf_interval())
     exp = price_A_selling_A * self.target_reserve_A / self.target_reserve_B
     result = self.balance_B * (1 - (self.balance_A / (token_A_input + self.balance_A))**exp)
 
@@ -168,4 +188,3 @@ class DeltafiAMM(AMM):
     
     # print("get_tvl_ratio_to_initial_state", str(current_tvl), str(initial_tvl))
     return current_tvl / initial_tvl
-    

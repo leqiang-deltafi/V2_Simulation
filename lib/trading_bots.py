@@ -8,10 +8,10 @@ class RetailAgent(TradingBot):
         self.oracle = oracle
         self.max_sell_A_amount = 2000
         self.max_sell_B_amount = self.max_sell_A_amount / oracle.get_price()
-        self.accepted_price_range = 0.1 * random.random()
+        self.accepted_price_range = 0.05 * random.random()
 
     def maybe_sell_A_for_B(self, amm: AMM):
-        price_A_selling_A = 1 / self.oracle.get_price()
+        price_A_selling_A = 1 / (self.oracle.get_price() + (1 - 2*random.random())*self.oracle.get_conf_interval())
         sell_A_amount = self.max_sell_A_amount * random.random() * random.random()
         accepted_min_B_amount = sell_A_amount * price_A_selling_A * (1 - self.accepted_price_range * random.random())
         amm_buy_B_amount = amm.get_swap_out_B(sell_A_amount)
@@ -20,7 +20,7 @@ class RetailAgent(TradingBot):
             amm.swap_A_for_B(sell_A_amount)
     
     def maybe_sell_B_for_A(self, amm: AMM):
-        price_B_selling_B = self.oracle.get_price()
+        price_B_selling_B = self.oracle.get_price() + (1 - 2*random.random())*self.oracle.get_conf_interval()
         sell_B_amount = self.max_sell_B_amount * random.random()
         accept_min_A_amount = sell_B_amount * price_B_selling_B * (1 - self.accepted_price_range * random.random())
         amm_buy_A_amount = amm.get_swap_out_A(sell_B_amount)

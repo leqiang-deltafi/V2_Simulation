@@ -89,6 +89,9 @@ class DeltafiInternalArbAMM(InternalArbAMM):
 
     self.enable_external_exchange = enable_external_exchange
   
+  def get_name(self):
+    return "Deltafi V2 + internal arb pool"
+
   @staticmethod
   def get_optimal_trade(target_ratio_A_to_B, balance_A, balance_B, oracle_price):
     P = 1 / oracle_price
@@ -126,8 +129,14 @@ class UniswapInternalArbAMM(InternalArbAMM):
   def __init__(self, initial_balance_A, initial_balance_B, oracle: Oracle, arb_pool_ratio=0.1, arb_rebalance_ratio=1, fee_rate=0, enable_external_exchange=False):
     super().__init__(initial_balance_A, initial_balance_B, oracle, arb_pool_ratio, arb_rebalance_ratio)
     self.enable_external_exchange = enable_external_exchange
-    self.child_amm: UniswapAMM = UniswapAMM(initial_balance_A, initial_balance_B, oracle=oracle, fee_rate=fee_rate)
+    self.child_amm: UniswapAMM = UniswapAMM(
+      initial_balance_A - self.arb_balance_A, initial_balance_B - self.arb_balance_B, 
+      oracle=oracle, fee_rate=fee_rate
+    )
   
+  def get_name(self):
+    return "uniswap + internal pool"
+
   def rebalance(self):
     oracle_price = self.oracle.get_price()
     current_k = self.child_amm.balance_A * self.child_amm.balance_B
