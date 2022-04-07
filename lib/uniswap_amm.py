@@ -1,4 +1,5 @@
 from .prototypes import AMM
+from .lp_bots import UniswapLPBot
 
 # class that implement uniswap for comparison
 # TODO: add deposit and withdraw after discussion
@@ -6,6 +7,8 @@ class UniswapAMM(AMM):
   def __init__(self, initial_reserve_A, initial_reserve_B, oracle, fee_rate=0):
     self.initial_reserve_A = initial_reserve_A
     self.initial_reserve_B = initial_reserve_B
+    self.share_supply = initial_reserve_A
+
     self.oracle = oracle
     # initial reserves
     # token A is USDC, token B is ETH
@@ -68,3 +71,26 @@ class UniswapAMM(AMM):
     initial_tvl = self.initial_reserve_A + self.initial_reserve_B * self.oracle.get_price()
 
     return current_tvl / initial_tvl
+  
+  def lp_deposit(self, token_B_amount):
+    lp_share = self.share_supply * (token_B_amount / self.balance_B)
+    token_A_amount = token_B_amount * (self.balance_A / self.balance_B)
+
+    self.balance_A += token_A_amount
+    self.balance_B += token_B_amount
+
+    self.share_supply += lp_share
+    return lp_share, token_A_amount
+  
+  def lp_withdraw(self, share):
+    token_A_output = self.balance_A * (share / self.share_supply)
+    token_B_output = self.balance_B * (share / self.share_supply)
+
+    self.balance_A -= token_A_output
+    self.balance_B -= token_B_output
+
+    self.share_supply -= share
+    return token_A_output, token_B_output
+
+  def get_lp_bot(self):
+    return UniswapLPBot(self, self.oracle)
