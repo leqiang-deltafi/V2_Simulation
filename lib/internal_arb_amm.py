@@ -7,13 +7,20 @@ from lib.price_data import Oracle
 from .prototypes import AMM
 import math
 
+''' parent class for uniswap/deltafi amm with internal arb '''
 class InternalArbAMM(AMM):
 
   def __init__(self, initial_balance_A, initial_balance_B, oracle: Oracle, arb_pool_ratio=0.1, arb_rebalance_ratio=1) -> None:
     self.arb_balance_A = initial_balance_A * arb_pool_ratio
     self.arb_balance_B = initial_balance_B * arb_pool_ratio
     self.child_amm = AMM()
+
+    ''' initial arb pool ratio of the whole pool '''
     self.arb_pool_ratio = arb_pool_ratio
+    ''' 
+    if this ratio is 1, each time the rebalance will be targeted at getting the pool fully rebalanced
+    if it is less than 1, the rebalancing function will limit the amount of token for rebalancing
+    '''
     self.arb_rebalance_ratio = arb_rebalance_ratio
 
     self.oracle = oracle
@@ -107,7 +114,6 @@ class DeltafiInternalArbAMM(InternalArbAMM):
     if delta_A > 0:
       arb_sell_A = max(0, min(delta_A*self.arb_rebalance_ratio, self.arb_balance_A))
       arb_buy_B = self.get_swap_out_B(arb_sell_A, do_simulation=False)
-      # print("A", str(self.balance_A), str(self.balance_B), str(self.arb_balance_A), str(self.arb_balance_B), str(arb_sell_A), str(arb_buy_B), sep=" ")
 
       self.child_amm.balance_A += arb_sell_A
       self.child_amm.balance_B -= arb_buy_B
@@ -117,7 +123,6 @@ class DeltafiInternalArbAMM(InternalArbAMM):
     elif delta_B > 0:
       arb_sell_B = max(0, min(delta_B*self.arb_rebalance_ratio, self.arb_balance_B))
       arb_buy_A = self.get_swap_out_A(arb_sell_B, do_simulation=False)
-      # print("B", str(self.balance_A), str(self.balance_B), str(self.arb_balance_A), str(self.arb_balance_B), str(arb_buy_A), str(arb_sell_B), sep=" ")
 
       self.child_amm.balance_A -= arb_buy_A
       self.child_amm.balance_B += arb_sell_B
